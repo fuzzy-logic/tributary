@@ -14,8 +14,12 @@
     <dependencies>
         <dependency>
             <groupId>com.codepoetics</groupId>
-            <artifactId>fluvius</artifactId>
-            <version>1.2</version>
+            <artifactId>fluvius-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.codepoetics</groupId>
+            <artifactId>fluvius-json</artifactId>
         </dependency>
 
         <dependency>

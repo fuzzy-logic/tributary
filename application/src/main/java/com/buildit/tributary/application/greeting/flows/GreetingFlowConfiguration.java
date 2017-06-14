@@ -1,11 +1,17 @@
 package com.buildit.tributary.application.greeting.flows;
 
-import com.buildit.tributary.domain.greeting.Addressee;
 import com.buildit.tributary.domain.greeting.Greeting;
 import com.buildit.tributary.domain.greeting.GreetingStep;
+import com.codepoetics.fluvius.api.Action;
 import com.codepoetics.fluvius.api.Flow;
+import com.codepoetics.fluvius.api.FlowExecution;
+import com.codepoetics.fluvius.api.FlowVisitor;
+import com.codepoetics.fluvius.api.compilation.FlowCompiler;
 import com.codepoetics.fluvius.api.functional.F1;
+import com.codepoetics.fluvius.api.history.FlowHistoryRepository;
 import com.codepoetics.fluvius.flows.Flows;
+import com.codepoetics.fluvius.history.History;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -18,11 +24,21 @@ import static com.buildit.tributary.application.greeting.flows.GreetingFlowKeys.
 @Configuration
 public class GreetingFlowConfiguration {
 
+  private final FlowCompiler compiler;
   private final GreetingStep greetingStep;
 
   @Autowired
-  public GreetingFlowConfiguration(GreetingStep greetingStep) {
+  public GreetingFlowConfiguration(
+      FlowCompiler compiler,
+      GreetingStep greetingStep) {
+    this.compiler = compiler;
     this.greetingStep = greetingStep;
+  }
+
+  @Bean
+  public FlowExecution<String> greetingMessageExecution(
+      @Qualifier("greetingMessageFlow") Flow<String> flow) {
+    return compiler.compile(flow);
   }
 
   @Bean
@@ -42,6 +58,11 @@ public class GreetingFlowConfiguration {
     return Flows.obtaining(message).from(greeting).using(new F1<Greeting, String>() {
       @Override
       public String apply(Greeting input) {
+        try {
+          Thread.sleep(60000);
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
         return input.message();
       }
     });
