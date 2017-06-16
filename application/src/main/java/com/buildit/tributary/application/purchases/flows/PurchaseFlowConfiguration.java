@@ -120,8 +120,8 @@ public class PurchaseFlowConfiguration {
   private Flow<PurchaseOutcome> outcomeOkFlow() {
     return Flows.obtaining(PurchaseFlowKeys.purchaseOutcome).from(orderReference).using("Purchase completed ok", new F1<OrderReference, PurchaseOutcome>() {
       @Override
-      public PurchaseOutcome apply(OrderReference orderReference1) {
-        return null;
+      public PurchaseOutcome apply(OrderReference myOrderReference) {
+        return ImmutablePurchaseOutcome.builder().purchaseSucceeded(true).orderReference(myOrderReference).build();
       }
     });
   }

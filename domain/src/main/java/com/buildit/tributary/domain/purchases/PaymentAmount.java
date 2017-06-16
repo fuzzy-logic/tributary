@@ -3,7 +3,10 @@ package com.buildit.tributary.domain.purchases;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.immutables.value.Value;
 
+import java.math.BigDecimal;
+
 @Value.Immutable
 @JsonSerialize
 public interface PaymentAmount {
+  BigDecimal amount();
 }
