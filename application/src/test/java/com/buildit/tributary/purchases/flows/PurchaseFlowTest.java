@@ -15,13 +15,14 @@ import com.codepoetics.fluvius.json.history.FlowHistoryView;
 import com.codepoetics.fluvius.json.history.JsonEventDataSerialiser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
 
@@ -54,8 +55,14 @@ public class PurchaseFlowTest {
       orderNotificationStep
   );
 
+  @Before
+  public void initialiseMocks() throws Exception {
+    when(releaseStockStep.apply(any(ProductBasket.class))).thenReturn(Status.COMPLETE);
+    when (refundPaymentStep.apply(any(PaymentReference.class))).thenReturn(Status.COMPLETE);
+  }
+
   @Test
-  public void prettyPrint() throws Exception {
+  public void happyPath() throws Exception {
     System.out.println(Flows.prettyPrint(configuration.purchaseFlow()));
     UUID flowId = UUID.randomUUID();
 
@@ -70,6 +77,31 @@ public class PurchaseFlowTest {
     System.out.println(mapper.writeValueAsString(FlowHistoryView.from(repository.getFlowHistory(flowId))));
 
     assertTrue(outcome.purchaseSucceeded());
+  }
+
+  @Test
+  public void paymentFails() throws Exception {
+    System.out.println(Flows.prettyPrint(configuration.purchaseFlow()));
+    UUID flowId = UUID.randomUUID();
+
+    reserveStockSucceeds();
+    getBillingDetailsSucceeds();
+    makePaymentFails("Your money's no good here, Mr Torrance");
+    placeOrderSucceeds();
+    notificationSucceeds();
+
+
+      PurchaseOutcome outcome = compiler.compile(configuration.purchaseFlow()).run(
+          flowId,
+          PurchaseFlowKeys.customerId.of(ImmutableCustomerId.builder().id(UUID.randomUUID()).build()),
+          PurchaseFlowKeys.productBasket.of(ImmutableProductBasket.builder().build())
+      );
+
+      assertFalse(outcome.purchaseSucceeded());
+      assertTrue(outcome.failureReason().isPresent());
+      assertEquals("Your money's no good here, Mr Torrance", outcome.failureReason().get());
+
+    System.out.println(mapper.writeValueAsString(FlowHistoryView.from(repository.getFlowHistory(flowId))));
   }
 
   private void configureSuccess() throws Exception {
@@ -96,6 +128,10 @@ public class PurchaseFlowTest {
       ImmutablePaymentReference.builder()
           .reference(UUID.randomUUID())
           .build());
+  }
+
+  private void makePaymentFails(String failureMessage) throws Exception {
+    when(makePaymentStep.apply(any(BillingDetails.class), any(PaymentAmount.class))).thenThrow(new IllegalStateException(failureMessage));
   }
 
   private void placeOrderSucceeds() throws Exception {

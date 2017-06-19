@@ -57,7 +57,7 @@ public class PurchaseFlowConfiguration {
         new RecoveryFunction<PurchaseOutcome>() {
       @Override
       public PurchaseOutcome apply(Exception failure) {
-        return ImmutablePurchaseOutcome.builder().failureReason(failure.getMessage()).build();
+        return ImmutablePurchaseOutcome.builder().purchaseSucceeded(false).failureReason(failure.getMessage()).build();
       }
     });
   }
