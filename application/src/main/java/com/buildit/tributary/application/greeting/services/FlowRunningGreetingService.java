@@ -23,7 +23,7 @@ public class FlowRunningGreetingService implements GreetingService {
   }
 
   @Override
-  public String greet(String title, String forename, String surname) {
+  public String greet(String title, String forename, String surname) throws Exception {
     return greetingMessageExecution.run(
           addressee.of(
               ImmutableAddressee.builder()

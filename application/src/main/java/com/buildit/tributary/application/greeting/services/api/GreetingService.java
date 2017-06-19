@@ -5,7 +5,7 @@ import com.codepoetics.fluvius.api.FlowResultCallback;
 import java.util.UUID;
 
 public interface GreetingService {
-  String greet(String title, String forename, String surname);
+  String greet(String title, String forename, String surname) throws Exception;
 
   Runnable greetAsync(UUID flowId, String title, String forename, String surname, FlowResultCallback<String> callback);
 }

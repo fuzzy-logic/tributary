@@ -2,32 +2,27 @@ package com.buildit.tributary.purchases.flows;
 
 import com.buildit.tributary.application.purchases.flows.PurchaseFlowConfiguration;
 import com.buildit.tributary.application.purchases.flows.PurchaseFlowKeys;
+import com.buildit.tributary.domain.Status;
 import com.buildit.tributary.domain.purchases.*;
 import com.buildit.tributary.domain.purchases.steps.*;
 import com.codepoetics.fluvius.api.compilation.FlowCompiler;
 import com.codepoetics.fluvius.api.history.FlowHistoryRepository;
 import com.codepoetics.fluvius.api.scratchpad.Scratchpad;
-import com.codepoetics.fluvius.api.services.ServiceCallResult;
 import com.codepoetics.fluvius.compilation.Compilers;
 import com.codepoetics.fluvius.flows.Flows;
-import com.codepoetics.fluvius.history.EventDataSerialisers;
 import com.codepoetics.fluvius.history.History;
 import com.codepoetics.fluvius.json.history.FlowHistoryView;
 import com.codepoetics.fluvius.json.history.JsonEventDataSerialiser;
-import com.codepoetics.fluvius.services.ServiceCalls;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.mockito.stubbing.OngoingStubbing;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.stub;
 import static org.mockito.Mockito.when;
 
 public class PurchaseFlowTest {
@@ -60,7 +55,7 @@ public class PurchaseFlowTest {
   );
 
   @Test
-  public void prettyPrint() throws JsonProcessingException {
+  public void prettyPrint() throws Exception {
     System.out.println(Flows.prettyPrint(configuration.purchaseFlow()));
     UUID flowId = UUID.randomUUID();
 
@@ -77,7 +72,7 @@ public class PurchaseFlowTest {
     assertTrue(outcome.purchaseSucceeded());
   }
 
-  private void configureSuccess() {
+  private void configureSuccess() throws Exception {
     reserveStockSucceeds();
     getBillingDetailsSucceeds();
     makePaymentSucceeds();
@@ -85,36 +80,36 @@ public class PurchaseFlowTest {
     notificationSucceeds();
   }
 
-  private void reserveStockSucceeds() {
+  private void reserveStockSucceeds() throws Exception {
     stubSuccess(reserveStockStep.apply(any(ProductBasket.class), any(CustomerId.class)),
         ImmutablePaymentAmount.builder()
             .amount(new BigDecimal("101.01"))
             .build());
   }
 
-  private void getBillingDetailsSucceeds() {
+  private void getBillingDetailsSucceeds() throws Exception {
     stubSuccess(getBillingDetailsStep.apply(any(CustomerId.class)), ImmutableBillingDetails.builder().build());
   }
 
-  private void makePaymentSucceeds() {
+  private void makePaymentSucceeds() throws Exception {
     stubSuccess(makePaymentStep.apply(any(BillingDetails.class), any(PaymentAmount.class)),
       ImmutablePaymentReference.builder()
           .reference(UUID.randomUUID())
           .build());
   }
 
-  private void placeOrderSucceeds() {
+  private void placeOrderSucceeds() throws Exception {
     stubSuccess(placeOrderStep.apply(any(CustomerId.class), any(ProductBasket.class), any(PaymentReference.class)),
         ImmutableOrderReference.builder()
             .reference(UUID.randomUUID())
             .build());
   }
 
-  private void notificationSucceeds() {
-    stubSuccess(orderNotificationStep.apply(any(Scratchpad.class)), null);
+  private void notificationSucceeds() throws Exception {
+    stubSuccess(orderNotificationStep.apply(any(Scratchpad.class)), Status.COMPLETE);
   }
 
-  private <T> void stubSuccess(ServiceCallResult<T> stubSeed, T result) {
-    when(stubSeed).thenReturn(ServiceCalls.success(result));
+  private <T> void stubSuccess(T stubSeed, T result) {
+    when(stubSeed).thenReturn(result);
   }
 }

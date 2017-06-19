@@ -1,7 +1,7 @@
 package com.buildit.tributary.domain.purchases.steps;
 
+import com.buildit.tributary.domain.Status;
 import com.codepoetics.fluvius.api.functional.ScratchpadFunction;
-import com.codepoetics.fluvius.api.services.ServiceCallResult;
 
-public interface OrderNotificationStep extends ScratchpadFunction<ServiceCallResult<Void>> {
+public interface OrderNotificationStep extends ScratchpadFunction<Status> {
 }

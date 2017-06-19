@@ -28,7 +28,7 @@ public class GreetingController {
   }
 
   @PostMapping(path="/greeting", consumes = "application/json", produces = "application/json")
-  public @ResponseBody GreetingResponse greet(@RequestBody GreetingRequest greetingRequest) {
+  public @ResponseBody GreetingResponse greet(@RequestBody GreetingRequest greetingRequest) throws Exception {
     return ImmutableGreetingResponse.builder()
         .greeting(greetingService.greet(
             greetingRequest.title(),
