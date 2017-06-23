@@ -12,6 +12,7 @@
 
     <properties>
         <java.version>1.7</java.version>
+        <fluvius.version>1.7</fluvius.version>
     </properties>
 
     <dependencyManagement>
@@ -25,13 +26,25 @@
             <dependency>
                 <groupId>com.codepoetics</groupId>
                 <artifactId>fluvius-core</artifactId>
-                <version>1.5-SNAPSHOT</version>
+                <version>${fluvius.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>com.codepoetics</groupId>
                 <artifactId>fluvius-json</artifactId>
-                <version>1.3-SNAPSHOT</version>
+                <version>${fluvius.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.codepoetics</groupId>
+                <artifactId>fluvius-api</artifactId>
+                <version>${fluvius.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.codepoetics</groupId>
+                <artifactId>fluvius-test</artifactId>
+                <version>${fluvius.version}</version>
             </dependency>
 
             <dependency>
