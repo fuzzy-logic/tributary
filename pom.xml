@@ -12,7 +12,7 @@
 
     <properties>
         <java.version>1.7</java.version>
-        <fluvius.version>1.7</fluvius.version>
+        <fluvius.version>1.10</fluvius.version>
     </properties>
 
     <dependencyManagement>

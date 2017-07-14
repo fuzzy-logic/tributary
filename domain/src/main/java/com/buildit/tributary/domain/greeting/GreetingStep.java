@@ -1,10 +1,10 @@
 package com.buildit.tributary.domain.greeting;
 
-import com.codepoetics.fluvius.api.functional.F1;
+import com.codepoetics.fluvius.api.functional.SingleParameterStep;
 
 /**
  * Generates an on-brand greeting
  */
-public interface GreetingStep extends F1<Addressee, Greeting> {
+public interface GreetingStep extends SingleParameterStep<Addressee, Greeting> {
   Greeting apply(Addressee addressee);
 }

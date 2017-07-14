@@ -2,16 +2,11 @@ package com.buildit.tributary.application.greeting.flows;
 
 import com.buildit.tributary.domain.greeting.Greeting;
 import com.buildit.tributary.domain.greeting.GreetingStep;
-import com.codepoetics.fluvius.api.Action;
 import com.codepoetics.fluvius.api.Flow;
 import com.codepoetics.fluvius.api.FlowExecution;
-import com.codepoetics.fluvius.api.FlowVisitor;
 import com.codepoetics.fluvius.api.compilation.FlowCompiler;
-import com.codepoetics.fluvius.api.functional.F1;
-import com.codepoetics.fluvius.api.history.FlowHistoryRepository;
+import com.codepoetics.fluvius.api.functional.SingleParameterStep;
 import com.codepoetics.fluvius.flows.Flows;
-import com.codepoetics.fluvius.history.History;
-import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -55,7 +50,7 @@ public class GreetingFlowConfiguration {
 
   @Bean
   public Flow<String> extractMessageFlow() {
-    return Flows.obtaining(message).from(greeting).using(new F1<Greeting, String>() {
+    return Flows.obtaining(message).from(greeting).using(new SingleParameterStep<Greeting, String>() {
       @Override
       public String apply(Greeting input) {
         try {

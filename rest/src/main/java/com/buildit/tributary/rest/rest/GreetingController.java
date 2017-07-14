@@ -5,7 +5,8 @@ import com.buildit.tributary.rest.protocol.GreetingRequest;
 import com.buildit.tributary.rest.protocol.ImmutableGreetingResponse;
 import com.buildit.tributary.rest.protocol.GreetingResponse;
 import com.codepoetics.fluvius.api.FlowResultCallback;
-import com.codepoetics.fluvius.api.history.FlowHistoryRepository;
+import com.codepoetics.fluvius.api.history.FlowEventRepository;
+import com.codepoetics.fluvius.api.tracing.TraceMap;
 import com.codepoetics.fluvius.json.history.FlowHistoryView;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,11 +20,16 @@ import java.util.UUID;
 public class GreetingController {
 
   private final GreetingService greetingService;
-  private final FlowHistoryRepository<JsonNode> historyRepository;
+  private final TraceMap greetingFlowTrace;
+  private final FlowEventRepository<JsonNode> historyRepository;
 
   @Autowired
-  public GreetingController(GreetingService greetingService, FlowHistoryRepository<JsonNode> historyRepository) {
+  public GreetingController(
+      GreetingService greetingService,
+      TraceMap greetingFlowTrace,
+      FlowEventRepository<JsonNode> historyRepository) {
     this.greetingService = greetingService;
+    this.greetingFlowTrace = greetingFlowTrace;
     this.historyRepository = historyRepository;
   }
 
@@ -66,6 +72,6 @@ public class GreetingController {
 
   @GetMapping(path="tracing/{id}", produces = "application/json")
   public @ResponseBody FlowHistoryView getHistory(@PathVariable("id") UUID flowId) {
-    return FlowHistoryView.from(historyRepository.getFlowHistory(flowId));
+    return FlowHistoryView.from(flowId, greetingFlowTrace, historyRepository.getEvents(flowId));
   }
 }

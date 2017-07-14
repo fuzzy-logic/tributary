@@ -25,13 +25,14 @@
 
         <dependency>
             <groupId>com.buildit</groupId>
-            <artifactId>application</artifactId>
+            <artifactId>infrastructure</artifactId>
         </dependency>
 
         <dependency>
             <groupId>com.buildit</groupId>
-            <artifactId>infrastructure</artifactId>
+            <artifactId>application</artifactId>
         </dependency>
+
     </dependencies>
 
     <build>

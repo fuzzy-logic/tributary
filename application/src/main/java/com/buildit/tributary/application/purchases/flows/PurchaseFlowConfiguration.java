@@ -4,129 +4,125 @@ import com.buildit.tributary.domain.Status;
 import com.buildit.tributary.domain.purchases.*;
 import com.buildit.tributary.domain.purchases.steps.*;
 import com.codepoetics.fluvius.api.Flow;
-import com.codepoetics.fluvius.api.functional.F1;
-import com.codepoetics.fluvius.api.functional.RecoveryFunction;
+import com.codepoetics.fluvius.api.annotations.StepMethod;
+import com.codepoetics.fluvius.api.compilation.FlowCompiler;
+import com.codepoetics.fluvius.api.functional.Returning;
+import com.codepoetics.fluvius.api.functional.ScratchpadFunction;
 import com.codepoetics.fluvius.api.scratchpad.Key;
+import com.codepoetics.fluvius.api.scratchpad.KeyProvider;
+import com.codepoetics.fluvius.api.scratchpad.Scratchpad;
+import com.codepoetics.fluvius.api.wrapping.FlowExecutionProxyFactory;
+import com.codepoetics.fluvius.api.wrapping.FlowWrapperFactory;
 import com.codepoetics.fluvius.flows.Flows;
 import com.codepoetics.fluvius.scratchpad.Keys;
+import com.codepoetics.fluvius.wrapping.Wrappers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import static com.codepoetics.fluvius.flows.Flows.onSuccess;
-
 @Configuration
 public class PurchaseFlowConfiguration {
 
-  private static final Key<PaymentAmount> paymentAmount = Keys.named("paymentAmount");
-  private static final Key<BillingDetails> billingDetails = Keys.named("billingDetails");
-  private static final Key<PaymentReference> paymentReference = Keys.named("paymentReference");
-  private static final Key<OrderReference> orderReference = Keys.named("orderReference");
-  private static final Key<Status> releaseStockResult = Keys.named("releaseStockResult");
-  private static final Key<Status> refundPaymentResult = Keys.named("refundPaymentResult");
-  private static final Key<Status> notificationResult = Keys.named("notificationResult");
-
-  private final ReserveStockStep reserveStockStep;
-  private final GetBillingDetailsStep getBillingDetailsStep;
-  private final ReleaseStockStep releaseStockStep;
-  private final MakePaymentStep makePaymentStep;
-  private final PlaceOrderStep placeOrderStep;
-  private final RefundPaymentStep refundPaymentStep;
-  private final OrderNotificationStep notificationStep;
+  private final Key<PurchaseOutcome> purchaseOutcomeKey;
+  private final FlowWrapperFactory factory;
+  private final FlowExecutionProxyFactory proxyFactory;
+  private final Flow<PaymentAmount> reserveStockFlow;
+  private final Flow<BillingDetails> getBillingDetailsFlow;
+  private final Flow<Status> releaseStockFlow;
+  private final Flow<PaymentReference> makePaymentFlow;
+  private final Flow<OrderReference> placeOrderFlow;
+  private final Flow<Status> refundPaymentFlow;
+  private final Flow<Status> notificationFlow;
 
   @Autowired
   public PurchaseFlowConfiguration(
+      FlowCompiler compiler,
       ReserveStockStep reserveStockStep,
       GetBillingDetailsStep getBillingDetailsStep,
       ReleaseStockStep releaseStockStep, MakePaymentStep makePaymentStep,
       PlaceOrderStep placeOrderStep,
       RefundPaymentStep refundPaymentStep,
       OrderNotificationStep notificationStep) {
-    this.reserveStockStep = reserveStockStep;
-    this.getBillingDetailsStep = getBillingDetailsStep;
-    this.releaseStockStep = releaseStockStep;
-    this.makePaymentStep = makePaymentStep;
-    this.placeOrderStep = placeOrderStep;
-    this.refundPaymentStep = refundPaymentStep;
-    this.notificationStep = notificationStep;
+    KeyProvider provider = Keys.createProvider();
+
+    this.factory = Wrappers.createWrapperFactory(provider);
+    this.proxyFactory = Wrappers.createProxyFactory(compiler, provider);
+
+    this.purchaseOutcomeKey = provider.getKey("purchaseOutcome", PurchaseOutcome.class);
+    this.reserveStockFlow = factory.flowFor(reserveStockStep);
+    this.getBillingDetailsFlow = factory.flowFor(getBillingDetailsStep);
+    this.releaseStockFlow = factory.flowFor(releaseStockStep);
+    this.makePaymentFlow = factory.flowFor(makePaymentStep);
+    this.placeOrderFlow = factory.flowFor(placeOrderStep);
+    this.refundPaymentFlow = factory.flowFor(refundPaymentStep);
+    this.notificationFlow = factory.flowFor(notificationStep);
   }
 
-  private static <T> Flow<PurchaseOutcome> failureFlow(Key<T> key, String reason) {
-    return Flows.recoverFrom(key).to(PurchaseFlowKeys.purchaseOutcome).using(
-        "Fail because " + reason,
-        new RecoveryFunction<PurchaseOutcome>() {
-      @Override
-      public PurchaseOutcome apply(Exception failure) {
-        return ImmutablePurchaseOutcome.builder().purchaseSucceeded(false).failureReason(failure.getMessage()).build();
-      }
-    });
+  @Bean
+  public PurchaseFlowRunner purchaseFlowRunner(Flow<PurchaseOutcome> purchaseFlow) {
+    return proxyFactory.proxyFor(PurchaseFlowRunner.class, purchaseFlow);
   }
 
   @Bean
   public Flow<PurchaseOutcome> purchaseFlow() {
-    return reserveStockFlow()
-        .then(onSuccess(paymentAmount, continueToBillingFlow())
-            .otherwise(failureFlow(paymentAmount, "Insufficient stock available")));
+    return reserveStockFlow.branchOnResult()
+        .onFailure(failureFlow(reserveStockFlow, "Insufficient stock available"))
+        .otherwise(continueToBillingFlow());
   }
 
-  private Flow<PaymentAmount> reserveStockFlow() {
-    return Flows.obtaining(paymentAmount).from(PurchaseFlowKeys.productBasket, PurchaseFlowKeys.customerId).using("Reserve stock", reserveStockStep);
-  }
 
   private Flow<PurchaseOutcome> continueToBillingFlow() {
-    return getBillingDetailsFlow()
-        .then(onSuccess(billingDetails, continueToPaymentFlow())
-            .otherwise(releaseStockFlow()
-                .then(failureFlow(billingDetails,"Unable to retrieve billing details"))));
-  }
-
-  private Flow<BillingDetails> getBillingDetailsFlow() {
-    return Flows.obtaining(billingDetails).from(PurchaseFlowKeys.customerId).using("Get customer billing details", getBillingDetailsStep);
+    return getBillingDetailsFlow.branchOnResult()
+        .onFailure(releaseStockFlow
+            .then(failureFlow(getBillingDetailsFlow, "Unable to retrieve billing details")))
+        .otherwise(continueToPaymentFlow());
   }
 
   private Flow<PurchaseOutcome> continueToPaymentFlow() {
-    return Flows.obtaining(paymentReference).from(billingDetails, paymentAmount).using("Make payment", makePaymentStep)
-        .then(onSuccess(paymentReference, continueToOrderFlow())
-            .otherwise(releaseStockFlow()
-                .then(failureFlow(paymentReference,"Payment failed"))));
+    return makePaymentFlow.branchOnResult()
+        .onFailure(
+            releaseStockFlow
+                .then(failureFlow(makePaymentFlow, "Payment failed")))
+        .otherwise(continueToOrderFlow());
   }
 
   private Flow<PurchaseOutcome> continueToOrderFlow() {
-    return placeOrderFlow()
-        .then(onSuccess(orderReference, continueToNotificationFlow())
-            .otherwise(refundPaymentFlow()
-                .then(releaseStockFlow())
-                .then(failureFlow(orderReference,"Unable to place order"))));
-  }
-
-  private Flow<OrderReference> placeOrderFlow() {
-    return Flows.obtaining(orderReference).from(PurchaseFlowKeys.customerId, PurchaseFlowKeys.productBasket, paymentReference).using("Place order", placeOrderStep);
+    return placeOrderFlow.branchOnResult()
+        .onFailure(
+            releaseStockFlow
+              .then(refundPaymentFlow)
+              .then(failureFlow(placeOrderFlow, "Unable to place order")))
+        .otherwise(continueToNotificationFlow());
   }
 
   private Flow<PurchaseOutcome> continueToNotificationFlow() {
-    return notificationFlow()
-        .then(outcomeOkFlow());
+    return notificationFlow
+        .then(factory.flowFor(new OutcomeOKStep()));
   }
 
-  private Flow<PurchaseOutcome> outcomeOkFlow() {
-    return Flows.obtaining(PurchaseFlowKeys.purchaseOutcome).from(orderReference).using("Purchase completed ok", new F1<OrderReference, PurchaseOutcome>() {
-      @Override
-      public PurchaseOutcome apply(OrderReference myOrderReference) {
-        return ImmutablePurchaseOutcome.builder().purchaseSucceeded(true).orderReference(myOrderReference).build();
-      }
-    });
+  private <T> Flow<PurchaseOutcome> failureFlow(final Flow<T> failedFlow, String reason) {
+    return Flows.from(failedFlow.getProvidedKey()).to(purchaseOutcomeKey).using(
+        "Fail because " + reason,
+        new ScratchpadFunction<PurchaseOutcome>() {
+          @Override
+          public PurchaseOutcome apply(Scratchpad scratchpad) {
+            return ImmutablePurchaseOutcome.builder()
+                .purchaseSucceeded(false)
+                .failureReason(scratchpad.getFailureReason(failedFlow.getProvidedKey()).getMessage())
+                .build();
+          }
+        });
   }
 
-  private Flow<Status> notificationFlow() {
-    return Flows.from(PurchaseFlowKeys.customerId, PurchaseFlowKeys.productBasket, paymentReference, orderReference).to(notificationResult)
-        .using("Send notification", notificationStep);
-  }
+  public static class OutcomeOKStep implements Returning<PurchaseOutcome> {
 
-  private Flow<Status> refundPaymentFlow() {
-    return Flows.obtaining(refundPaymentResult).from(paymentReference).using("Refund payment", refundPaymentStep);
-  }
+    @StepMethod
+    public PurchaseOutcome getOutcome(OrderReference myOrderReference) {
+      return ImmutablePurchaseOutcome.builder()
+          .purchaseSucceeded(true)
+          .orderReference(myOrderReference)
+          .build();
+    }
 
-  private Flow<Status> releaseStockFlow() {
-    return Flows.obtaining(releaseStockResult).from(PurchaseFlowKeys.productBasket).using("Release stock", releaseStockStep);
   }
 }

@@ -1,15 +1,12 @@
 package com.buildit.tributary.rest.spring;
 
 import com.codepoetics.fluvius.api.compilation.FlowCompiler;
-import com.codepoetics.fluvius.api.history.FlowHistoryRepository;
+import com.codepoetics.fluvius.api.history.FlowEventRepository;
 import com.codepoetics.fluvius.api.logging.FlowLogger;
 import com.codepoetics.fluvius.api.scratchpad.Key;
 import com.codepoetics.fluvius.api.scratchpad.Scratchpad;
 import com.codepoetics.fluvius.compilation.Compilers;
-import com.codepoetics.fluvius.history.History;
-import com.codepoetics.fluvius.json.history.JsonEventDataSerialiser;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -23,11 +20,11 @@ public class CompilerConfiguration {
   private static final Logger LOGGER = LoggerFactory.getLogger("Flow logging");
 
   @Bean
-  public FlowCompiler flowCompiler(FlowHistoryRepository<JsonNode> repository) {
+  public FlowCompiler flowCompiler(FlowEventRepository<JsonNode> repository) {
     return Compilers.builder()
         .loggingTo(FLOW_LOGGER)
         .mutationChecking()
-        .recordingTo(repository)
+        .tracingWith(repository)
         .build();
   }
 
